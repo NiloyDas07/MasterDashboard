@@ -1,6 +1,6 @@
 import React from "react";
-import WeatherSection from "../_components/WeatherSection";
-import NewsSection from "../_components/NewsSection";
+import WeatherSection from "./_components/WeatherSection";
+import NewsSection from "./_components/NewsSection";
 
 const Weather = () => {
   return (
