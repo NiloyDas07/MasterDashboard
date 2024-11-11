@@ -4,7 +4,7 @@ import {
   closestCorners,
   DndContext,
   DragEndEvent,
-  DragMoveEvent,
+  DragOverEvent,
   DragStartEvent,
   KeyboardSensor,
   PointerSensor,
@@ -18,35 +18,26 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { useState } from "react";
-import { DNDType } from "./types/kanbanTypes";
+import { useEffect, useState } from "react";
+import { DNDColumnsType, DNDItemsType } from "./types/kanbanTypes";
 import ColumnCard from "./_components/ColumnCard";
+import { initialColumns } from "./data/kanbanInitialData";
 
 const Kanban: React.FC = () => {
-  // States
-  const [columns, setColumns] = useState<DNDType[]>([]);
+  const localStorageData = localStorage.getItem("kanbanColumns");
+
+  const [columns, setColumns] = useState<DNDColumnsType[]>(
+    localStorageData ? JSON.parse(localStorageData) : initialColumns
+  );
+
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-  const [currentColumnId, setCurrentColumnId] =
-    useState<UniqueIdentifier | null>(null);
-  const [columnName, setColumnName] = useState<string>("");
-  const [itemName, setItemName] = useState<string>("");
 
-  // Helpers
-  const findValueOfItems = (id: UniqueIdentifier, type: string) => {
-    if (type === "column") {
-      return columns.find((column) => column.id === id);
-    }
-
-    if (type === "item") {
-      return columns.find((column) =>
-        column.items.find((item) => item.id === id)
-      );
-    }
-  };
-
-  //Dnd Handlers
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -54,121 +45,178 @@ const Kanban: React.FC = () => {
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const { id } = active;
-    setActiveId(id);
+    setActiveId(active.id);
   };
 
-  const handleDragMove = (event: DragMoveEvent) => {
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
+    if (!over) return;
 
-    // Handle items sorting
-    if (
-      active.id.toString().includes("item") &&
-      over?.id.toString().includes("item") &&
-      active &&
-      over &&
-      active.id !== over.id
-    ) {
-      // Find the active column and over column
-      const activeColumn = findValueOfItems(active.id, "item");
-      const overColumn = findValueOfItems(over.id, "item");
+    const activeId = active.id;
+    const overId = over.id;
 
-      // If the active or over column is undefined, return
-      if (!activeColumn || !overColumn) return;
+    if (activeId === overId) return;
 
-      // Find the active and over columns
-      const activeColumnIndex = columns.findIndex(
-        (column) => column.id === activeColumn.id
-      );
-      const overColumnIndex = columns.findIndex(
-        (column) => column.id === overColumn.id
-      );
+    const isActiveAColumn = active.data.current?.type === "column";
+    const isOverAColumn = over.data.current?.type === "column";
 
-      // Find the index of the active and over items
-      const activeItemIndex = activeColumn.items.findIndex(
-        (item) => item.id === active.id
-      );
-      const overItemIndex = overColumn.items.findIndex(
-        (item) => item.id === over.id
-      );
-
-      // In the same column
-      if (activeColumnIndex === overColumnIndex) {
-        let newItems = [...columns];
-        newItems[activeColumnIndex].items = arrayMove(
-          newItems[activeColumnIndex].items,
-          activeItemIndex,
-          overItemIndex
+    if (!isActiveAColumn && isOverAColumn) {
+      setColumns((columns) => {
+        const activeColumn = columns.find((col) =>
+          col.items.some((item) => item.id === activeId)
         );
+        const overColumn = columns.find((col) => col.id === overId);
 
-        setColumns(newItems);
-      } else {
-        // In different column
-        let newColumns = [...columns];
-        const [removedItem] = newColumns[activeColumnIndex].items.splice(
-          activeItemIndex,
-          1
+        if (!activeColumn || !overColumn) return columns;
+
+        const activeItemIndex = activeColumn.items.findIndex(
+          (item) => item.id === activeId
         );
+        const activeItem = activeColumn.items[activeItemIndex];
 
-        newColumns[overColumnIndex].items.splice(overItemIndex, 0, removedItem);
-
-        setColumns(newColumns);
-      }
+        return columns.map((col) => {
+          if (col.id === activeColumn.id) {
+            return {
+              ...col,
+              items: col.items.filter((item) => item.id !== activeId),
+            };
+          } else if (col.id === overColumn.id) {
+            return {
+              ...col,
+              items: [...col.items, activeItem],
+            };
+          } else {
+            return col;
+          }
+        });
+      });
     }
 
-    // Handling Item Drop into a column
-    if (
-      active.id.toString().includes("item") &&
-      over?.id.toString().includes("column") &&
-      active &&
-      over &&
-      active.id !== over.id
-    ) {
-      // Find the active column and over column
-      const activeColumn = findValueOfItems(active.id, "item");
-      const overColumn = findValueOfItems(over.id, "column");
-
-      // If the active or over column is undefined, return
-      if (!activeColumn || !overColumn) return;
-
-      // Find the index of active and over columns
-      const activeColumnIndex = columns.findIndex(
-        (column) => column.id === activeColumn.id
-      );
-      const overColumnIndex = columns.findIndex(
-        (column) => column.id === overColumn.id
-      );
-
-      // Find the index of the active item in the active column
-      const activeItemIndex = activeColumn.items.findIndex(
-        (item) => item.id === active.id
-      );
-
-      // Remove the active item from the active column and add it to the over column
-      let newColumns = [...columns];
-      const [removedItem] = newColumns[activeColumnIndex].items.splice(
-        activeItemIndex,
-        1
-      );
-
-      newColumns[overColumnIndex].items.push(removedItem);
-
-      setColumns(newColumns);
+    if (isActiveAColumn && isOverAColumn) {
+      setColumns((columns) => {
+        const activeColumnIndex = columns.findIndex(
+          (col) => col.id === activeId
+        );
+        const overColumnIndex = columns.findIndex((col) => col.id === overId);
+        return arrayMove(columns, activeColumnIndex, overColumnIndex);
+      });
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {};
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    const isActiveAColumn = active.data.current?.type === "column";
+
+    if (!isActiveAColumn) {
+      setColumns((columns) => {
+        const startColumn = columns.find((col) =>
+          col.items.some((item) => item.id === activeId)
+        );
+        const finishColumn = columns.find((col) =>
+          col.items.some((item) => item.id === overId)
+        );
+
+        if (!startColumn || !finishColumn) return columns;
+
+        if (startColumn.id === finishColumn.id) {
+          // Reorder items within the same column
+          const updatedItems = arrayMove(
+            startColumn.items,
+            startColumn.items.findIndex((item) => item.id === activeId),
+            finishColumn.items.findIndex((item) => item.id === overId)
+          );
+
+          return columns.map((col) =>
+            col.id === startColumn.id ? { ...col, items: updatedItems } : col
+          );
+        }
+
+        // Move item to a different column
+        const activeItemIndex = startColumn.items.findIndex(
+          (item) => item.id === activeId
+        );
+        const activeItem = startColumn.items[activeItemIndex];
+
+        return columns.map((col) => {
+          if (col.id === startColumn.id) {
+            return {
+              ...col,
+              items: col.items.filter((item) => item.id !== activeId),
+            };
+          } else if (col.id === finishColumn.id) {
+            return {
+              ...col,
+              items: [...col.items, activeItem],
+            };
+          } else {
+            return col;
+          }
+        });
+      });
+    }
+
+    setActiveId(null);
+  };
+
+  const handleAddItem = (columnId: UniqueIdentifier, task: DNDItemsType) => {
+    setColumns((prevColumns) => {
+      return prevColumns.map((col) => {
+        if (col.id === columnId) {
+          return {
+            ...col,
+            items: [...col.items, task],
+          };
+        }
+        return col;
+      });
+    });
+  };
+
+  const handleEditItem = (
+    columnId: UniqueIdentifier,
+    itemId: UniqueIdentifier,
+    task: DNDItemsType
+  ) => {
+    setColumns((prevColumns) => {
+      return prevColumns.map((col) => {
+        if (col.id === columnId) {
+          return {
+            ...col,
+            items: col.items.map((item) => {
+              if (item.id === itemId) {
+                return task;
+              }
+              return item;
+            }),
+          };
+        }
+        return col;
+      });
+    });
+  };
+
+  // Update to localstorage everytime columns change
+  useEffect(() => {
+    localStorage.setItem("kanbanColumns", JSON.stringify(columns));
+  }, [columns]);
 
   return (
     <main className="flex-grow p-4 flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Kanban Board</h1>
 
-      <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="flex-grow flex gap-4 overflow-x-auto">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
-          onDragMove={handleDragMove}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={columns.map((column) => column.id)}>
@@ -177,15 +225,10 @@ const Kanban: React.FC = () => {
                 key={column.id}
                 id={column.id}
                 title={column.title}
-                onAddItem={() => {}}
-                description=""
-              >
-                <SortableContext items={column.items.map((item) => item.id)}>
-                  {column.items.map((item) => (
-                    <div key={item.id}>{item.title}</div>
-                  ))}
-                </SortableContext>
-              </ColumnCard>
+                items={column.items}
+                handleAddItem={handleAddItem}
+                handleEditItem={handleEditItem}
+              ></ColumnCard>
             ))}
           </SortableContext>
         </DndContext>
