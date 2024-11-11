@@ -7,23 +7,26 @@ import { navbarItems } from "../data/navBarItems";
 
 const NavBar: React.FC = () => {
   return (
-    <header className="flex items-center bg-muted h-14 px-4 gap-2">
-      <nav className="flex items-center gap-4 flex-grow h-full">
-        <Link
-          href={"/dashboard"}
-          className="mr-auto"
-          aria-label="Go to weather news dashboard"
-        >
-          <Logo />
-        </Link>
+    <>
+      <header className="flex items-center bg-muted/80 h-14 px-4 gap-2 fixed top-0 left-0 right-0 z-50 backdrop-blur-sm">
+        <nav className="flex items-center gap-4 flex-grow h-full">
+          <Link
+            href={"/dashboard"}
+            className="mr-auto"
+            aria-label="Go to weather news dashboard"
+          >
+            <Logo />
+          </Link>
 
-        {navbarItems.map(({ id, href, label }) => (
-          <StyledLink href={href} key={id} label={label} />
-        ))}
-      </nav>
+          {navbarItems.map(({ id, href, label }) => (
+            <StyledLink href={href} key={id} label={label} />
+          ))}
+        </nav>
 
-      <ModeToggle />
-    </header>
+        <ModeToggle />
+      </header>
+      <div className="h-14"></div>
+    </>
   );
 };
 

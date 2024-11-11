@@ -4,6 +4,7 @@ import React from "react";
 import NavBar from "./_components/NavBar";
 import NavBarMobile from "./_components/NavBarMobile";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import Footer from "./_components/Footer";
 
 const DashboardLayout: React.FC = ({
   children,
@@ -16,6 +17,7 @@ const DashboardLayout: React.FC = ({
     <>
       {isMobile ? <NavBarMobile /> : <NavBar />}
       {children}
+      <Footer />
     </>
   );
 };
