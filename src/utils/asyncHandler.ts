@@ -1,11 +1,11 @@
 // utils/asyncHandler.ts
-import { NextApiRequest, NextApiResponse } from "next";
 import { handleApiError } from "@/utils/errorHandler";
 import { ApiError } from "./ApiError";
 import axios from "axios";
+import { NextRequest, NextResponse } from "next/server";
 
 export const asyncHandler = (fn: Function) => {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
+  return async (req: NextRequest, res: NextResponse) => {
     try {
       return await fn(req, res);
     } catch (error) {
