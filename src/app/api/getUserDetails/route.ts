@@ -13,7 +13,7 @@ export interface userDetailsResponse {
   company: string;
 }
 
-const getUserDetails = async (req: NextRequest): Promise<NextResponse> => {
+export const GET = async (req: NextRequest): Promise<NextResponse> => {
   const page = req.nextUrl.searchParams.get("page") || 1;
   const searchQuery = req.nextUrl.searchParams.get("searchQuery") || "";
 
@@ -32,5 +32,3 @@ const getUserDetails = async (req: NextRequest): Promise<NextResponse> => {
     }
   );
 };
-
-export const GET = asyncHandler(getUserDetails);

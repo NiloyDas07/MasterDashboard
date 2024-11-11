@@ -16,7 +16,7 @@ interface weatherDetailsResponse {
   sunset: number;
 }
 
-const getWeatherDetails = async (req: NextRequest): Promise<NextResponse> => {
+export const GET = async (req: NextRequest): Promise<NextResponse> => {
   const latitude = req.nextUrl.searchParams.get("latitude");
   const longitude = req.nextUrl.searchParams.get("longitude");
   const city = req.nextUrl.searchParams.get("city");
@@ -73,5 +73,3 @@ const getWeatherDetails = async (req: NextRequest): Promise<NextResponse> => {
     }
   );
 };
-
-export const GET = asyncHandler(getWeatherDetails);
