@@ -10,7 +10,7 @@ export interface NewsResponse {
   articles: any;
 }
 
-const getNews = async (req: NextRequest): Promise<NextResponse> => {
+export const GET = async (req: NextRequest): Promise<NextResponse> => {
   const page: number = Number(req.nextUrl.searchParams.get("page")) || 1;
 
   const response: AxiosResponse = await axios.get(
@@ -47,5 +47,3 @@ const getNews = async (req: NextRequest): Promise<NextResponse> => {
     { status: 200 }
   );
 };
-
-export const GET = asyncHandler(getNews);
