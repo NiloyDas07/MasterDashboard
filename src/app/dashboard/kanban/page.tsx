@@ -24,7 +24,14 @@ import ColumnCard from "./_components/ColumnCard";
 import { initialColumns } from "./data/kanbanInitialData";
 
 const Kanban: React.FC = () => {
-  const localStorageData = localStorage.getItem("kanbanColumns");
+  let localStorageData;
+
+  useEffect(() => {
+    localStorageData = localStorage.getItem("kanbanColumns");
+    if (localStorageData) {
+      setColumns(JSON.parse(localStorageData));
+    }
+  }, []);
 
   const [columns, setColumns] = useState<DNDColumnsType[]>(
     localStorageData ? JSON.parse(localStorageData) : initialColumns
